@@ -1,0 +1,7 @@
+{
+  "name": "Kashida AI - Cultural Textile Studio",
+  "description": "A high-end AI-powered platform for generating culturally authentic Pakistani and Chinese textile patterns with seamless repeat previews.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
