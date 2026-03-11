@@ -88,6 +88,16 @@ export const trainArtisanModel = async (
   };
 };
 
+const PRODUCTION_CONSTRAINTS = `
+CRITICAL PRODUCTION STANDARDS:
+- The pattern MUST be perfectly seamless and tileable without any visible seams or breaks.
+- Lines must be razor-sharp and smooth, optimized for high-resolution textile printing.
+- No color bleeding, no artifacts, and no unintended blurring.
+- The design must be a flat 2D top-down view, strictly avoiding 3D effects or cloth folds.
+- Ensure high contrast and clean separation between different design elements.
+- The output must be production-ready for industrial fabric printing.
+`;
+
 export const generateTextilePattern = async (config: GenerationConfig): Promise<SynthesisResult> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
@@ -95,45 +105,63 @@ export const generateTextilePattern = async (config: GenerationConfig): Promise<
   const selectedMotifs = allAvailableMotifs.filter(m => config.motifIds.includes(m.id));
   const selectedArtStyle = ART_STYLES.find(s => s.id === config.artStyleId) || ART_STYLES[0];
   
-  if (selectedMotifs.length === 0) throw new Error("No motifs selected.");
+  if (config.motifIds.length === 0) throw new Error("No motifs selected.");
+
+  const isVector = selectedArtStyle.id === 'vector_precision';
 
   const artisanContext = config.artisanProfile 
     ? `FINE-TUNED DNA OVERRIDE: ${config.artisanProfile.styleDna}`
     : "";
 
   const sourceContext = config.sourceImage 
-    ? `A SOURCE IMAGE HAS BEEN PROVIDED AS A GEOMETRIC BASE. Use its structure as the blueprint while applying the requested motifs and patterns.`
+    ? `A SOURCE IMAGE HAS BEEN PROVIDED AS A GEOMETRIC BASE. Use its structural composition as the master layout blueprint. Align your generated motifs strictly to the shapes and flow of this source image.`
     : "";
 
   const repeatLogicMath = {
-    'Grid': `SEAMLESS GRID. 0 offset.`,
-    'Half-Drop': `HALF-DROP. 50% vertical stagger.`,
-    'Brick': `BRICK. 50% horizontal stagger.`
+    'Grid': `PERFECTLY SEAMLESS SQUARE TILE. No visible borders. Ensure edges align 1:1.`,
+    'Half-Drop': `HALF-DROP REPEAT. Design a tile for a 50% vertical offset stagger layout.`,
+    'Brick': `BRICK REPEAT. Design a tile for a 50% horizontal offset stagger layout.`
   }[config.repeatType];
 
   const complexityInstruction = {
-    'Minimal': 'Ensure a clean, sparse composition with significant negative space. Focus on essential lines and singular elegant motifs.',
-    'Balanced': 'Create a standard textile density with a harmonious mix of primary motifs and secondary flourishes.',
-    'Maximal': 'Produce a high-density, "horror vacui" style pattern. Every area should be filled with intricate micro-details, complex overlapping layers, and ornamental depth.'
+    'Minimal': 'Clean, breathable landscape. Focus on high-contrast primary heritage motifs with minimal filler.',
+    'Balanced': 'Standard professional textile density. Harmonious blend of main motifs and secondary ornamentation.',
+    'Maximal': 'Densely packed ornamental synthesis. Ornate, complex, and intricate layering of all heritage assets.'
   }[config.complexity];
 
   const negativeContext = config.negativePrompt 
-    ? `CRITICAL NEGATIVE CONSTRAINTS: You MUST NOT include any of these styles or elements in your imagePrompt: ${config.negativePrompt}. Ensure the generated pattern is strictly free of these elements.`
-    : "";
+    ? `STRICT EXCLUSION: ${config.negativePrompt}. Do not render these.`
+    : "STRICT EXCLUSION: No fabric texture, no linen grain, no silk texture, no gradients, no noise, no paper texture.";
 
+  // The Technical Prompt Engine
   const promptEngineResponse = await ai.models.generateContent({
     model: 'gemini-3-pro-preview',
-    contents: `Generate a technical textile design blueprint for ${config.culture} style.
-    MOTIFS: ${selectedMotifs.map(m => m.name).join(', ')}
-    REPEAT: ${config.repeatType} (${repeatLogicMath})
-    PALETTE: ${config.colorPalette}
-    COMPLEXITY: ${config.complexity} - ${complexityInstruction}
-    AESTHETIC STYLE: ${selectedArtStyle.name} - ${selectedArtStyle.description}
+    contents: `Act as a Technical Textile Architect and Production Engineer. Create a high-fidelity generation blueprint that is 100% production-ready for fabric printing.
+    
+    MOTIFS TO SYNTHESIZE: ${selectedMotifs.map(m => `${m.name}: ${m.description}`).join(' | ')}
+    LAYOUT: ${config.repeatType} (${repeatLogicMath})
+    COLORS: ${config.colorPalette}
+    COMPLEXITY: ${config.complexity} (${complexityInstruction})
+    AESTHETIC: ${selectedArtStyle.name}
+    
+    ${PRODUCTION_CONSTRAINTS}
+    
+    ${isVector ? "CRITICAL: The output must be a PURE VECTOR STYLE. Absolute zero texture, zero fabric grain, zero silk or linen effect, zero noise. Only sharp, razor-crisp paths and perfectly flat solid color fills. Optimized for high-quality industrial printing." : ""}
     ${sourceContext}
     ${artisanContext}
     ${negativeContext}
     
-    Output JSON with 'imagePrompt' (for an image generator) and 'artisanReasoning' (cultural context).`,
+    TASK:
+    1. 'imagePrompt': Precise technical prompt for image generation. Ensure 2D flat view.
+    2. 'artisanReasoning': A technical and cultural synthesis. 
+       STRICT RULES FOR REASONING: 
+       - Base the reasoning ONLY on the specific names and descriptions provided in the 'MOTIFS TO SYNTHESIZE' section above.
+       - Do NOT add outside historical facts, extra narrative filler, or speculative heritage stories NOT FOUND in the provided list.
+       - Explain how the visual elements of the specific motifs you listed (e.g., if you have 'Royal Peony', explain the Peony logic only) combine.
+       - Do NOT mention any heritage or history not explicitly defined in the input motif descriptions.
+       - Keep it concise (approx 80-120 words).
+    
+    Return JSON only.`,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
@@ -147,16 +175,13 @@ export const generateTextilePattern = async (config: GenerationConfig): Promise<
     }
   });
 
-  const synthesisData = JSON.parse(promptEngineResponse.text);
+  const synthesisData = JSON.parse(promptEngineResponse.text || "{}");
   
   const parts: any[] = [];
 
   if (config.sourceImage) {
     parts.push({
-      inlineData: {
-        mimeType: "image/png",
-        data: config.sourceImage.split(',')[1]
-      }
+      inlineData: { mimeType: "image/png", data: config.sourceImage.split(',')[1] }
     });
   }
 
@@ -166,17 +191,16 @@ export const generateTextilePattern = async (config: GenerationConfig): Promise<
     }
   });
 
-  const negativeInstruction = config.negativePrompt 
-    ? `\n\nNEGATIVE CONSTRAINTS (STRICTLY AVOID THESE): ${config.negativePrompt}` 
-    : "";
+  // Final generation prompt enhancement
+  const vectorEnforcement = isVector 
+    ? "ULTRA-SHARP VECTOR ART, 100% flat 2D illustration, zero texture, zero grain, razor-crisp edges, solid flat colors, no gradients, no shading, no fabric grain, no realistic lighting, no noise, zero-noise background, Adobe Illustrator master, print-ready industrial quality."
+    : selectedArtStyle.promptSuffix;
 
   parts.push({ 
     text: `${synthesisData.imagePrompt}. 
-    STYLE & QUALITY: ${selectedArtStyle.promptSuffix}, 8k quality, sharp intricate patterns. 
-    MANDATORY: Perfectly flat, top-down 2D textile design. Seamless tile for ${config.repeatType} layout. No perspective, no cloth folds, no 3D rendering. High contrast, sharp details.${config.sourceImage ? ' Maintain the structural layout of the provided source image.' : ''}${negativeInstruction}`
+    MANDATORY PRODUCTION CONSTRAINTS: ${vectorEnforcement}, ${PRODUCTION_CONSTRAINTS}, flat top-down design, high-contrast, perfectly tileable seamless ${config.repeatType} layout. No cloth folds, no 3D effects. ${negativeContext}`
   });
 
-  // Using Pro model with advanced parameters
   const imageResponse = await ai.models.generateContent({
     model: 'gemini-3-pro-image-preview',
     contents: { parts },
@@ -204,5 +228,49 @@ export const generateTextilePattern = async (config: GenerationConfig): Promise<
   return {
     imageUrl: `data:image/png;base64,${outputBase64}`,
     reasoning: synthesisData.artisanReasoning,
+  };
+};
+
+export const editPatternColors = async (imageUrl: string, newColorPalette: string): Promise<SynthesisResult> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  
+  const base64Data = imageUrl.split(',')[1];
+  const mimeType = imageUrl.split(';')[0].split(':')[1];
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash-image',
+    contents: {
+      parts: [
+        {
+          inlineData: {
+            data: base64Data,
+            mimeType: mimeType,
+          },
+        },
+        {
+          text: `Change the color palette of this textile pattern to: ${newColorPalette}. 
+          CRITICAL: Do NOT change the design, motifs, layout, or structure. 
+          Only change the colors. Keep the lines and shapes exactly as they are. 
+          The output should be the same pattern but with the new colors applied.`,
+        },
+      ],
+    },
+  });
+
+  let outputBase64 = "";
+  if (response.candidates?.[0]?.content?.parts) {
+    for (const part of response.candidates[0].content.parts) {
+      if (part.inlineData) {
+        outputBase64 = part.inlineData.data;
+        break;
+      }
+    }
+  }
+
+  if (!outputBase64) throw new Error("Color edit failed.");
+
+  return {
+    imageUrl: `data:image/png;base64,${outputBase64}`,
+    reasoning: `Color palette updated to ${newColorPalette} while preserving the original design structure.`,
   };
 };

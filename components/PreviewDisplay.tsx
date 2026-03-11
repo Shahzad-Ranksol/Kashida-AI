@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Download, Maximize, Layers, Repeat, BookOpen, ShieldCheck, Ruler, Palette, FileJson, ZoomIn } from 'lucide-react';
+import { Download, Layers, Repeat, BookOpen, ShieldCheck, Ruler, ZoomIn, FileCheck, MapPin, Palette } from 'lucide-react';
 import { GeneratedPattern } from '../types';
 
 interface PreviewDisplayProps {
@@ -17,22 +17,31 @@ const PreviewDisplay: React.FC<PreviewDisplayProps> = ({ pattern, isGenerating }
 
     const baseSize = `${zoom}%`;
     const url = `url(${pattern.imageUrl})`;
+    const lowerPrompt = pattern.prompt.toLowerCase();
 
-    if (pattern.prompt.toLowerCase().includes('half-drop')) {
+    if (lowerPrompt.includes('grid')) {
        return {
-         backgroundImage: `${url}, ${url}`,
+         backgroundImage: url,
          backgroundSize: `${baseSize} ${baseSize}`,
-         backgroundRepeat: 'repeat',
-         backgroundPosition: `0 0, calc(${baseSize} * 0.5) calc(${baseSize} * 0.5)`
+         backgroundRepeat: 'repeat'
        };
     }
 
-    if (pattern.prompt.toLowerCase().includes('brick')) {
+    if (lowerPrompt.includes('half-drop')) {
        return {
          backgroundImage: `${url}, ${url}`,
-         backgroundSize: `${baseSize} ${baseSize}`,
+         backgroundSize: `${zoom * 2}% ${zoom * 2}%`,
          backgroundRepeat: 'repeat',
-         backgroundPosition: `0 0, calc(${baseSize} * 0.5) calc(${baseSize} * 0.5)`
+         backgroundPosition: `0 0, ${zoom}% ${zoom}%`
+       };
+    }
+
+    if (lowerPrompt.includes('brick')) {
+       return {
+         backgroundImage: `${url}, ${url}`,
+         backgroundSize: `${zoom * 2}% ${zoom * 2}%`,
+         backgroundRepeat: 'repeat',
+         backgroundPosition: `0 0, ${zoom}% ${zoom}%`
        };
     }
 
@@ -89,7 +98,7 @@ const PreviewDisplay: React.FC<PreviewDisplayProps> = ({ pattern, isGenerating }
             <img 
               src={pattern.imageUrl} 
               alt="Generated textile pattern" 
-              className="w-full h-full object-cover transition-transform duration-1000 hover:scale-110"
+              className="w-full h-full object-cover transition-transform duration-1000 hover:scale-105"
             />
           )}
         </div>
@@ -104,7 +113,7 @@ const PreviewDisplay: React.FC<PreviewDisplayProps> = ({ pattern, isGenerating }
                 : 'bg-white/95 backdrop-blur text-amber-950 hover:bg-white'
             }`}
           >
-            <Repeat className={`w-6 h-6 ${isPreviewTiled ? 'animate-spin-slow' : ''}`} />
+            <Repeat className={`w-6 h-6 ${isPreviewTiled ? 'rotate-180 transition-transform duration-500' : ''}`} />
           </button>
           {isPreviewTiled && (
             <div className="p-4 bg-white/95 backdrop-blur rounded-[1.5rem] shadow-2xl flex flex-col items-center gap-3 animate-in fade-in zoom-in duration-300">
@@ -122,7 +131,7 @@ const PreviewDisplay: React.FC<PreviewDisplayProps> = ({ pattern, isGenerating }
           )}
           <a 
             href={pattern.imageUrl} 
-            download={`kashida-artisan-${Date.now()}.png`}
+            download={`sinopak-fusion-${Date.now()}.png`}
             className="p-5 bg-white/95 backdrop-blur rounded-[1.5rem] shadow-2xl hover:bg-white text-amber-950 transition-all active:scale-95"
           >
             <Download className="w-6 h-6" />
@@ -137,57 +146,64 @@ const PreviewDisplay: React.FC<PreviewDisplayProps> = ({ pattern, isGenerating }
                     <ShieldCheck className="w-4 h-4 text-emerald-600" />
                     <span className="text-[10px] font-black text-amber-900 uppercase tracking-[0.3em]">Artisan Verification</span>
                   </div>
-                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{new Date().toLocaleDateString()}</span>
+                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{new Date(pattern.timestamp).toLocaleDateString()}</span>
                 </div>
                 <h4 className="font-serif text-2xl font-bold text-gray-900 truncate tracking-tight">{pattern.motif}</h4>
             </div>
         </div>
       </div>
 
-      {/* Production Specs & Reasoning */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="bg-white p-10 rounded-[3rem] shadow-xl border border-black/[0.02] flex flex-col gap-6">
-          <div className="flex items-center gap-4 pb-4 border-b border-gray-50">
-            <div className="bg-amber-950/5 p-3 rounded-2xl">
-                <BookOpen className="w-5 h-5 text-amber-950" />
+      {/* Unified Vertical Stack for Results */}
+      <div className="space-y-8 flex flex-col">
+        {/* Technical Specs - PRIMARY */}
+        <div className="bg-[#050505] p-10 rounded-[3rem] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] text-white border border-white/5">
+          <div className="flex items-center gap-5 pb-8 border-b border-white/10 mb-8">
+            <div className="bg-amber-400 p-4 rounded-2xl shadow-[0_0_20px_rgba(251,191,36,0.3)]">
+                <Ruler className="w-6 h-6 text-black" />
             </div>
             <div>
-                <h5 className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-950">Cultural Synthesis</h5>
-                <p className="text-[9px] text-gray-400 font-bold uppercase mt-1">Heritage Logic Engine</p>
+                <h5 className="text-[12px] font-black uppercase tracking-[0.4em] text-amber-400 leading-none">Technical Blueprint</h5>
+                <p className="text-[9px] text-zinc-500 font-bold uppercase mt-2 tracking-widest">Master Production Spec Sheet</p>
             </div>
           </div>
-          <p className="text-[14px] text-gray-600 leading-relaxed font-medium italic text-pretty">
-            "{pattern.reasoning}"
-          </p>
+          
+          <div className="grid grid-cols-2 gap-6">
+             <div className="bg-white/5 p-6 rounded-3xl border border-white/5 flex flex-col group transition-all hover:bg-white/10">
+               <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest block mb-2">Target Density</span>
+               <span className="text-sm font-bold text-white flex items-center gap-2"><FileCheck className="w-4 h-4 text-amber-400" /> 300 DPI Export</span>
+             </div>
+             <div className="bg-white/5 p-6 rounded-3xl border border-white/5 flex flex-col group transition-all hover:bg-white/10">
+               <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest block mb-2">Output Matrix</span>
+               <span className="text-sm font-bold text-white flex items-center gap-2"><Palette className="w-4 h-4 text-amber-400" /> Flat Vector Path</span>
+             </div>
+             <div className="bg-white/5 p-6 rounded-3xl border border-white/5 flex flex-col group transition-all hover:bg-white/10">
+               <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest block mb-2">Repeat Mapping</span>
+               <span className="text-sm font-bold text-white truncate flex items-center gap-2"><MapPin className="w-4 h-4 text-amber-400" /> {pattern.prompt.split('Repeat: ')[1]?.split(' ')[0] || 'Seamless'}</span>
+             </div>
+             <div className="bg-white/5 p-6 rounded-3xl border border-white/5 flex flex-col group transition-all hover:bg-white/10">
+               <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest block mb-2">Encoding Class</span>
+               <span className="text-sm font-bold text-white">Lossless Master</span>
+             </div>
+          </div>
         </div>
 
-        <div className="bg-zinc-900 p-10 rounded-[3rem] shadow-xl text-white flex flex-col gap-6">
-          <div className="flex items-center gap-4 pb-4 border-b border-zinc-800">
-            <div className="bg-white/10 p-3 rounded-2xl">
-                <Ruler className="w-5 h-5 text-amber-400" />
+        {/* Cultural Narrative - SECONDARY */}
+        <div className="bg-white p-12 rounded-[3.5rem] shadow-xl border border-black/[0.03]">
+          <div className="flex items-center gap-5 pb-8 border-b border-gray-100 mb-8">
+            <div className="bg-amber-950 p-4 rounded-2xl">
+                <BookOpen className="w-6 h-6 text-white" />
             </div>
             <div>
-                <h5 className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-400">Technical Specs</h5>
-                <p className="text-[9px] text-zinc-500 font-bold uppercase mt-1">Production Readiness</p>
+                <h5 className="text-[12px] font-black uppercase tracking-[0.4em] text-amber-950 leading-none">Cultural Synthesis</h5>
+                <p className="text-[9px] text-gray-400 font-bold uppercase mt-2 tracking-widest">Artisan Heritage Narrative</p>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-             <div className="bg-zinc-800/50 p-4 rounded-2xl border border-zinc-700/50">
-               <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest block mb-1">DPI Target</span>
-               <span className="text-sm font-bold text-white">300 Optimized</span>
-             </div>
-             <div className="bg-zinc-800/50 p-4 rounded-2xl border border-zinc-700/50">
-               <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest block mb-1">Color Mode</span>
-               <span className="text-sm font-bold text-white">CMYK / Pantone</span>
-             </div>
-             <div className="bg-zinc-800/50 p-4 rounded-2xl border border-zinc-700/50">
-               <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest block mb-1">Repeat Type</span>
-               <span className="text-sm font-bold text-white truncate">{pattern.prompt.split('Repeat: ')[1] || 'Seamless'}</span>
-             </div>
-             <div className="bg-zinc-800/50 p-4 rounded-2xl border border-zinc-700/50">
-               <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest block mb-1">File Format</span>
-               <span className="text-sm font-bold text-white">Lossless PNG</span>
-             </div>
+          
+          <div className="relative">
+            <div className="absolute -left-6 top-0 bottom-0 w-1.5 bg-amber-950/10 rounded-full" />
+            <p className="text-[16px] text-gray-800 leading-relaxed font-serif italic text-pretty pl-4">
+              {pattern.reasoning}
+            </p>
           </div>
         </div>
       </div>
