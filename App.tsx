@@ -41,7 +41,8 @@ import {
   SlidersHorizontal,
   Plus,
   Compass,
-  AlertCircle
+  AlertCircle,
+  FileText
 } from 'lucide-react';
 import { Culture, Motif, GeneratedPattern, GenerationConfig, ColorPalette, ArtisanProfile } from './types';
 import { MOTIFS, PALETTES, ART_STYLES } from './constants';
@@ -50,6 +51,7 @@ import MotifCard from './components/MotifCard';
 import PreviewDisplay from './components/PreviewDisplay';
 import PaletteSelector from './components/PaletteSelector';
 import EditMotifModal from './components/EditMotifModal';
+import { TechnicalDossier } from './components/TechnicalDossier';
 
 const STORAGE_KEY = 'sinopak_artisan_database_v4';
 const PROFILE_STORAGE_KEY = 'sinopak_artisan_profile_v4';
@@ -96,6 +98,7 @@ function App() {
   const [artisanProfile, setArtisanProfile] = useState<ArtisanProfile | null>(null);
   const [hasApiKey, setHasApiKey] = useState<boolean | null>(null);
   const [scrollY, setScrollY] = useState(0);
+  const [showDossier, setShowDossier] = useState(false);
 
   const [culture, setCulture] = useState<Culture>(Culture.FUSION);
   const [selectedMotifIds, setSelectedMotifIds] = useState<string[]>([]);
@@ -147,6 +150,9 @@ function App() {
       if (aistudio) {
         const selected = await aistudio.hasSelectedApiKey();
         setHasApiKey(selected);
+      } else {
+        // If not in AI Studio, assume key is provided via environment
+        setHasApiKey(true);
       }
     };
     checkKey();
@@ -429,9 +435,14 @@ function App() {
       alert("Please select at least one motif to begin synthesis.");
       return;
     }
-    if (!hasApiKey) {
+    
+    // Check for API key presence (either via AI Studio or environment)
+    if (hasApiKey === false) {
       await handleOpenKeyDialog();
+      // If still no key, stop
+      if (!hasApiKey) return;
     }
+
     setLoading(true);
     try {
       const currentSeed = seed || Math.floor(Math.random() * 1000000);
@@ -468,11 +479,14 @@ function App() {
       setCurrentPattern(newPattern);
       setHistory(prev => [newPattern, ...prev]);
     } catch (error: any) {
+      console.error("Synthesis Error:", error);
       if (error?.message?.includes("Requested entity was not found")) {
         setHasApiKey(false);
-        alert("API Key configuration error. Please authorize again.");
+        alert("API Key configuration error. The selected key may not have access to Pro models. Please authorize again with a paid project key.");
+      } else if (error?.message?.includes("fetch")) {
+        alert("Network error. Your VPN or connection might be blocking the API request. Please try disabling your VPN or checking your connection.");
       } else {
-        alert('Synthesis failed. Ensure Pro-model authorization is active.');
+        alert(`Synthesis failed: ${error?.message || 'Unknown error'}. Ensure your API key is valid and has access to Pro models.`);
       }
     } finally {
       setLoading(false);
@@ -547,7 +561,14 @@ function App() {
         </div>
         
         <div className="flex items-center gap-6">
-           {!hasApiKey && (
+            <button 
+              onClick={() => setShowDossier(true)}
+              className="hidden md:flex items-center gap-2.5 px-6 py-3 bg-indigo-50 text-indigo-900 rounded-full border border-indigo-200 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 transition-all shadow-sm group"
+            >
+              <FileText className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+              Technical Dossier
+            </button>
+            {!hasApiKey && (
              <button 
                onClick={handleOpenKeyDialog}
                className="flex items-center gap-2.5 px-6 py-3 bg-amber-50 text-amber-900 rounded-full border border-amber-200 text-[10px] font-black uppercase tracking-widest hover:bg-amber-100 transition-all shadow-sm group"
@@ -570,6 +591,11 @@ function App() {
            </button>
         </div>
       </nav>
+
+      {/* Technical Dossier Modal */}
+      {showDossier && (
+        <TechnicalDossier onClose={() => setShowDossier(false)} />
+      )}
 
       <main className="max-w-[1440px] mx-auto p-12 lg:p-24 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-24">
@@ -598,27 +624,36 @@ function App() {
 
               {/* Compositional Blueprint (Img-to-Img) */}
               <div className="space-y-10">
-                <label className="flex items-center gap-4 text-[11px] font-black uppercase tracking-[0.4em] text-gray-300">
-                  <Compass className="w-4 h-4" /> 01 / Compositional Blueprint
-                </label>
-                <div className="flex flex-wrap gap-8 items-start bg-[#fcfcfb] p-10 rounded-[3.5rem] border border-gray-100">
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-4 text-[11px] font-black uppercase tracking-[0.4em] text-gray-300">
+                    <Compass className="w-4 h-4" /> 01 / Compositional Blueprint
+                  </label>
+                  {sourceImages.length > 0 && (
+                    <div className="flex items-center gap-2 px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[8px] font-black uppercase tracking-widest border border-indigo-100 animate-pulse">
+                      <ShieldCheck className="w-3 h-3" /> Structural Lock Engaged
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-8 items-start bg-[#fcfcfb] p-10 rounded-[3.5rem] border border-gray-100 group/blueprint relative overflow-hidden">
+                  <div className="absolute inset-0 bg-indigo-500/5 opacity-0 group-hover/blueprint:opacity-100 transition-opacity pointer-events-none" />
+                  
                   {sourceImages.length < 1 && (
                       <button 
                       onClick={() => sourceImageInputRef.current?.click()}
-                      className="w-full h-48 rounded-[2.5rem] border-2 border-dashed border-amber-950/20 hover:border-amber-950 hover:bg-amber-50 flex flex-col items-center justify-center gap-4 transition-all group"
+                      className="w-full h-48 rounded-[2.5rem] border-2 border-dashed border-indigo-900/20 hover:border-indigo-900 hover:bg-indigo-50 flex flex-col items-center justify-center gap-4 transition-all group"
                       >
-                      <UploadCloud className="w-10 h-10 text-amber-900/30 group-hover:text-amber-950 group-hover:scale-110 transition-all" />
+                      <UploadCloud className="w-10 h-10 text-indigo-900/30 group-hover:text-indigo-950 group-hover:scale-110 transition-all" />
                       <div className="text-center">
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-950 block">Define Structural Guide</span>
-                        <span className="text-[8px] text-gray-400 font-bold uppercase tracking-widest mt-1 block">(Optional Img-to-Img Base)</span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-950 block">Define Structural Guide</span>
+                        <span className="text-[8px] text-gray-400 font-bold uppercase tracking-widest mt-1 block">(Mandatory for Production-Ready Precision)</span>
                       </div>
                       </button>
                   )}
                   
                   {sourceImages.map((img, idx) => (
-                      <div key={idx} className="relative group w-full h-64 rounded-[2.5rem] overflow-hidden border border-black/5 shadow-2xl animate-in zoom-in duration-500">
+                      <div key={idx} className="relative group w-full h-80 rounded-[2.5rem] overflow-hidden border-4 border-indigo-100 shadow-2xl animate-in zoom-in duration-500">
                           <img src={img} className="w-full h-full object-cover" alt={`Blueprint ${idx}`} />
-                          <div className="absolute inset-0 bg-amber-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
+                          <div className="absolute inset-0 bg-indigo-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
                               <button 
                                   onClick={() => removeSourceImage(idx)}
                                   className="bg-white p-4 rounded-full text-rose-500 shadow-2xl hover:scale-110 transition-transform"
@@ -626,14 +661,28 @@ function App() {
                                   <Trash2 className="w-6 h-6" />
                               </button>
                           </div>
-                          <div className="absolute bottom-6 left-8 bg-white/95 px-6 py-2 rounded-full text-[10px] text-amber-950 uppercase tracking-[0.2em] font-black shadow-lg">
+                          <div className="absolute top-6 right-8 bg-indigo-600 text-white px-4 py-1.5 rounded-full text-[8px] font-black uppercase tracking-[0.2em] shadow-xl flex items-center gap-2">
+                            <Cpu className="w-3 h-3" /> Master Blueprint
+                          </div>
+                          <div className="absolute bottom-6 left-8 bg-white/95 px-6 py-2 rounded-full text-[10px] text-indigo-950 uppercase tracking-[0.2em] font-black shadow-lg border border-indigo-100">
                               Primary Structural Layout Active
                           </div>
                       </div>
                   ))}
-                  <p className="text-[10px] text-gray-400 font-medium leading-relaxed italic text-center w-full px-12">
-                    Synthesis will follow this image's flow. Upload a garment sketch, a landscape photo, or a layout guide.
-                  </p>
+                  <div className="w-full space-y-4">
+                    <p className="text-[10px] text-gray-400 font-medium leading-relaxed italic text-center w-full px-12">
+                      Synthesis will follow this image's flow. The model uses this as a pixel-perfect geometric anchor for digital fabric printing.
+                    </p>
+                    {sourceImages.length > 0 && (
+                      <div className="grid grid-cols-3 gap-2 px-12">
+                        {['Symmetry Lock', 'Spatial Mapping', 'Contour Growth'].map((tag, i) => (
+                          <div key={i} className="py-1 border border-indigo-100 rounded-lg text-[7px] font-black uppercase tracking-widest text-indigo-400 text-center">
+                            {tag}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 

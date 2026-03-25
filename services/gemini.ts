@@ -13,6 +13,10 @@ export const trainArtisanModel = async (
   onLog: (log: string) => void,
   onProgress: (accuracy: number) => void
 ): Promise<ArtisanProfile> => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    throw new Error("API Key is missing. Please set the API_KEY environment variable.");
+  }
   let combinedDna = "";
   
   const trainableParams = motifs.length * 1536 * 128; 
@@ -42,7 +46,7 @@ export const trainArtisanModel = async (
       Output a technical stylistic vector.` });
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: { parts }
@@ -65,7 +69,7 @@ export const trainArtisanModel = async (
 
   onLog("Performing Global Weight Synthesis...");
   
-  const aiFinal = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const aiFinal = new GoogleGenAI({ apiKey });
   const masterResponse = await aiFinal.models.generateContent({
     model: 'gemini-3-pro-preview',
     contents: `Synthesize these stylistic vectors into a single "Artisan Signature" for a textile AI. 
@@ -91,15 +95,20 @@ export const trainArtisanModel = async (
 const PRODUCTION_CONSTRAINTS = `
 CRITICAL PRODUCTION STANDARDS:
 - The pattern MUST be perfectly seamless and tileable without any visible seams or breaks.
-- Lines must be razor-sharp and smooth, optimized for high-resolution textile printing.
+- Lines must be razor-sharp and smooth, optimized for high-resolution digital textile printing.
+- Focus on INTRICATE MINIATURE ELEMENTS and fine-line detail (0.1mm precision).
 - No color bleeding, no artifacts, and no unintended blurring.
 - The design must be a flat 2D top-down view, strictly avoiding 3D effects or cloth folds.
-- Ensure high contrast and clean separation between different design elements.
+- High contrast and clean separation between different design elements.
 - The output must be production-ready for industrial fabric printing.
 `;
 
 export const generateTextilePattern = async (config: GenerationConfig): Promise<SynthesisResult> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    throw new Error("API Key is missing. Please set the API_KEY environment variable.");
+  }
+  const ai = new GoogleGenAI({ apiKey });
   
   const allAvailableMotifs = [...MOTIFS, ...(config.customMotifs || [])];
   const selectedMotifs = allAvailableMotifs.filter(m => config.motifIds.includes(m.id));
@@ -114,7 +123,11 @@ export const generateTextilePattern = async (config: GenerationConfig): Promise<
     : "";
 
   const sourceContext = config.sourceImage 
-    ? `A SOURCE IMAGE HAS BEEN PROVIDED AS A GEOMETRIC BASE. Use its structural composition as the master layout blueprint. Align your generated motifs strictly to the shapes and flow of this source image.`
+    ? `CRITICAL: A COMPOSITIONAL BLUEPRINT (STRUCTURAL GUIDE) HAS BEEN PROVIDED. 
+       You MUST treat this image as a STRICT GEOMETRIC ANCHOR. 
+       Maintain the exact spatial distribution, symmetry, and layout of the blueprint. 
+       Align your generated motifs strictly to the shapes and flow of this source image. 
+       The blueprint is the driving factor for the final composition.`
     : "";
 
   const repeatLogicMath = {
@@ -134,6 +147,7 @@ export const generateTextilePattern = async (config: GenerationConfig): Promise<
     : "STRICT EXCLUSION: No fabric texture, no linen grain, no silk texture, no gradients, no noise, no paper texture.";
 
   // The Technical Prompt Engine
+  console.log("Starting Technical Prompt Engine (Gemini 3 Pro)...");
   const promptEngineResponse = await ai.models.generateContent({
     model: 'gemini-3-pro-preview',
     contents: `Act as a Technical Textile Architect and Production Engineer. Create a high-fidelity generation blueprint that is 100% production-ready for fabric printing.
@@ -175,6 +189,7 @@ export const generateTextilePattern = async (config: GenerationConfig): Promise<
     }
   });
 
+  console.log("Prompt Engine Response Received. Parsing Synthesis Data...");
   const synthesisData = JSON.parse(promptEngineResponse.text || "{}");
   
   const parts: any[] = [];
@@ -192,13 +207,19 @@ export const generateTextilePattern = async (config: GenerationConfig): Promise<
   });
 
   // Final generation prompt enhancement
+  console.log("Starting Image Generation (Gemini 3 Pro Image)...");
   const vectorEnforcement = isVector 
     ? "ULTRA-SHARP VECTOR ART, 100% flat 2D illustration, zero texture, zero grain, razor-crisp edges, solid flat colors, no gradients, no shading, no fabric grain, no realistic lighting, no noise, zero-noise background, Adobe Illustrator master, print-ready industrial quality."
     : selectedArtStyle.promptSuffix;
 
   parts.push({ 
     text: `${synthesisData.imagePrompt}. 
-    MANDATORY PRODUCTION CONSTRAINTS: ${vectorEnforcement}, ${PRODUCTION_CONSTRAINTS}, flat top-down design, high-contrast, perfectly tileable seamless ${config.repeatType} layout. No cloth folds, no 3D effects. ${negativeContext}`
+    TECHNICAL SPECIFICATIONS: 
+    - Resolution: Print-ready 300 DPI equivalent.
+    - Detail: Microscopic textile fiber structure, sharp intricate patterns, fine-line miniature elements.
+    - Style: Photorealistic textile scan, master-tier craftsmanship, professional studio lighting.
+    - Constraints: ${PRODUCTION_CONSTRAINTS}${negativeContext}
+    ${config.sourceImage ? 'STRICT ADHERENCE: Maintain the exact structural layout and geometric containers of the provided Compositional Blueprint.' : ''}`
   });
 
   const imageResponse = await ai.models.generateContent({
@@ -212,6 +233,8 @@ export const generateTextilePattern = async (config: GenerationConfig): Promise<
       } 
     },
   });
+
+  console.log("Image Generation Response Received.");
 
   let outputBase64 = "";
   if (imageResponse.candidates?.[0]?.content?.parts) {
@@ -232,7 +255,11 @@ export const generateTextilePattern = async (config: GenerationConfig): Promise<
 };
 
 export const editPatternColors = async (imageUrl: string, newColorPalette: string): Promise<SynthesisResult> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    throw new Error("API Key is missing. Please set the API_KEY environment variable.");
+  }
+  const ai = new GoogleGenAI({ apiKey });
   
   const base64Data = imageUrl.split(',')[1];
   const mimeType = imageUrl.split(';')[0].split(':')[1];
