@@ -204,7 +204,7 @@ export const TechnicalDossier: React.FC<TechnicalDossierProps> = ({ onClose }) =
                     <ul className="space-y-4 text-sm text-zinc-600">
                       <li className="flex gap-4">
                         <span className="text-zinc-900 font-black mt-1">●</span>
-                        <span><strong>Engine:</strong> Gemini 3 Pro (Multimodal Reasoning). This layer processes the user's creative intent and translates it into a "Technical Synthesis Script."</span>
+                        <span><strong>Engine:</strong> Gemini 3 Flash (Multimodal Reasoning). This layer processes the user's creative intent and translates it into a "Technical Synthesis Script."</span>
                       </li>
                       <li className="flex gap-4">
                         <span className="text-zinc-900 font-black mt-1">●</span>
@@ -225,7 +225,7 @@ export const TechnicalDossier: React.FC<TechnicalDossierProps> = ({ onClose }) =
                     <ul className="space-y-4 text-sm text-zinc-600">
                       <li className="flex gap-4">
                         <span className="text-zinc-900 font-black mt-1">●</span>
-                        <span><strong>Engine:</strong> Gemini 3 Pro Image. A high-resolution diffusion model optimized for texture synthesis and line-work precision.</span>
+                        <span><strong>Engine:</strong> Gemini 2.5 Flash Image. A high-resolution diffusion model optimized for texture synthesis and line-work precision.</span>
                       </li>
                       <li className="flex gap-4">
                         <span className="text-zinc-900 font-black mt-1">●</span>

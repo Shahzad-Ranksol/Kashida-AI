@@ -147,9 +147,9 @@ export const generateTextilePattern = async (config: GenerationConfig): Promise<
     : "STRICT EXCLUSION: No fabric texture, no linen grain, no silk texture, no gradients, no noise, no paper texture.";
 
   // The Technical Prompt Engine
-  console.log("Starting Technical Prompt Engine (Gemini 3 Pro)...");
+  console.log("Starting Technical Prompt Engine (Gemini 3 Flash)...");
   const promptEngineResponse = await ai.models.generateContent({
-    model: 'gemini-3-pro-preview',
+    model: 'gemini-3-flash-preview',
     contents: `Act as a Technical Textile Architect and Production Engineer. Create a high-fidelity generation blueprint that is 100% production-ready for fabric printing.
     
     MOTIFS TO SYNTHESIZE: ${selectedMotifs.map(m => `${m.name}: ${m.description}`).join(' | ')}
@@ -207,7 +207,7 @@ export const generateTextilePattern = async (config: GenerationConfig): Promise<
   });
 
   // Final generation prompt enhancement
-  console.log("Starting Image Generation (Gemini 3 Pro Image)...");
+  console.log("Starting Image Generation (Gemini 2.5 Flash Image)...");
   const vectorEnforcement = isVector 
     ? "ULTRA-SHARP VECTOR ART, 100% flat 2D illustration, zero texture, zero grain, razor-crisp edges, solid flat colors, no gradients, no shading, no fabric grain, no realistic lighting, no noise, zero-noise background, Adobe Illustrator master, print-ready industrial quality."
     : selectedArtStyle.promptSuffix;
@@ -223,13 +223,12 @@ export const generateTextilePattern = async (config: GenerationConfig): Promise<
   });
 
   const imageResponse = await ai.models.generateContent({
-    model: 'gemini-3-pro-image-preview',
+    model: 'gemini-2.5-flash-image',
     contents: { parts },
     config: { 
       seed: config.seed,
       imageConfig: { 
-        aspectRatio: config.aspectRatio || "1:1",
-        imageSize: config.imageSize || "2K" 
+        aspectRatio: config.aspectRatio || "1:1"
       } 
     },
   });
